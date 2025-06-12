@@ -614,3 +614,11 @@ class DischargeTranslatorApp {
         return div.innerHTML;
     }
 }
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        window.dischargeApp = new DischargeTranslatorApp();
+    } catch (error) {
+        console.error('Failed to initialize Discharge Translator App:', error);
+    }
+});
