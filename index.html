@@ -16,7 +16,6 @@
             <h1>🏥 Discharge Instructions Translator</h1>
             <p>Scan your QR code to translate discharge instructions into your preferred language</p>
         </header>
-
         <main>
             <section class="scanner-section">
                 <div class="language-selector">
@@ -35,3 +34,49 @@
                         <option value="ar">العربية (Arabic)</option>
                         <option value="hi">हिन्दी (Hindi)</option>
                         <option value="th">ไทย (Thai)</option>
+                        <option value="vi">Tiếng Việt (Vietnamese)</option>
+                    </select>
+                </div>
+
+                <div class="scanner-controls">
+                    <button id="startScan" class="btn btn-primary">📱 Start QR Scanner</button>
+                    <button id="stopScan" class="btn btn-secondary" style="display: none;">⏹️ Stop Scanner</button>
+                </div>
+                
+                <div class="camera-container">
+                    <video id="qr-video"></video>
+                </div>
+                
+                <div class="manual-input">
+                    <h3>📝 Or Enter Discharge Information Manually</h3>
+                    <textarea id="manualInput" placeholder="Paste or type your discharge information here..."></textarea>
+                    <button id="processManual" class="btn btn-translate">🔄 Process & Translate</button>
+                </div>
+
+                <div id="status-messages"></div>
+            </section>
+
+            <section id="output" class="output-section">
+                <div class="output-header">
+                    <h2>📋 Your Discharge Instructions</h2>
+                    <div class="language-info">
+                        <strong>Language:</strong> <span id="selectedLanguage">English</span>
+                    </div>
+                </div>
+                
+                <div id="outputContent"></div>
+                
+                <div class="action-buttons">
+                    <button id="printBtn" class="btn btn-print">🖨️ Print Instructions</button>
+                    <button id="shareBtn" class="btn btn-share">📤 Share</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/translator.js"></script>
+    <script src="js/medical-parser.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
