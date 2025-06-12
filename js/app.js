@@ -554,8 +554,6 @@ class DischargeTranslatorApp {
             }, 5000);
         }
     }
-
-    /**
      /**
      * Get status icon based on type
      */
