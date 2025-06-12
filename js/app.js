@@ -616,7 +616,3 @@ class DischargeTranslatorApp {
         return div.innerHTML;
     }
 }
-
-/**
- * Translation Service for medical content
- */
