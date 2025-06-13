@@ -26,7 +26,7 @@ class DischargeTranslatorApp {
     async init() {
         try {
             // Configure Azure Translator (add your credentials here if needed)
-            // this.translationService.setAzureKey('YOUR_API_KEY', 'YOUR_REGION');
+            // this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqdrpwPZZWBaJQQJ99BFACYeBjFXJ3w3AAAbACOGtOR6', 'eastus');
             
             this.setupEventListeners();
             this.updateLanguageDisplay();
