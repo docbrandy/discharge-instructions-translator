@@ -1,44 +1,112 @@
 /**
- * Translation Service for medical content
+ * Translation Service - Fixed version with better debugging
  */
 class TranslationService {
     constructor() {
         this.fallbackTranslations = {
             'es': {
-                'Take medication': 'Tomar medicamento',
+                // Complete phrases first (most specific)
+                'Take medication twice daily': 'Toma medicamento dos veces al día',
+                'Take medication once daily': 'Toma medicamento una vez al día',
+                'Follow up with doctor': 'Seguimiento con el doctor',
+                'Return if symptoms worsen': 'Regrese si los síntomas empeoran',
+                'Take your medication': 'Toma tu medicamento',
+                'Call your doctor': 'Llama a tu doctor',
+                'Go to emergency room': 'Ve a la sala de emergencias',
+                
+                // Common medical phrases
+                'Take medication': 'Toma medicamento',
                 'Follow up': 'Seguimiento',
-                'Rest': 'Descanso',
-                'Return if symptoms worsen': 'Regresar si los síntomas empeoran',
+                'twice daily': 'dos veces al día',
+                'once daily': 'una vez al día',
+                'three times daily': 'tres veces al día',
+                'with food': 'con comida',
+                'before meals': 'antes de las comidas',
+                'after meals': 'después de las comidas',
+                'at bedtime': 'al acostarse',
+                'as needed': 'según sea necesario',
+                
+                // Individual words (less specific)
                 'medication': 'medicamento',
+                'medicine': 'medicina',
                 'doctor': 'doctor',
-                'appointment': 'cita'
+                'appointment': 'cita',
+                'hospital': 'hospital',
+                'emergency': 'emergencia',
+                'symptoms': 'síntomas',
+                'pain': 'dolor',
+                'fever': 'fiebre',
+                'nausea': 'náusea',
+                'dizziness': 'mareo',
+                'headache': 'dolor de cabeza',
+                'chest pain': 'dolor en el pecho',
+                'shortness of breath': 'falta de aire',
+                'blood pressure': 'presión arterial',
+                'diabetes': 'diabetes',
+                'hypertension': 'hipertensión',
+                'infection': 'infección',
+                'surgery': 'cirugía',
+                'procedure': 'procedimiento',
+                'treatment': 'tratamiento',
+                'diagnosis': 'diagnóstico',
+                'condition': 'condición',
+                'rest': 'descanso',
+                'exercise': 'ejercicio',
+                'diet': 'dieta',
+                'water': 'agua',
+                'food': 'comida',
+                'sleep': 'dormir',
+                'take': 'toma',
+                'call': 'llama',
+                'return': 'regresa',
+                'visit': 'visita',
+                'schedule': 'programa',
+                'continue': 'continúa',
+                'stop': 'para',
+                'avoid': 'evita',
+                'daily': 'diario',
+                'weekly': 'semanal',
+                'monthly': 'mensual',
+                'morning': 'mañana',
+                'evening': 'noche',
+                'night': 'noche',
+                'day': 'día',
+                'week': 'semana',
+                'month': 'mes',
+                'year': 'año',
+                'if': 'si',
+                'when': 'cuando',
+                'until': 'hasta',
+                'before': 'antes',
+                'after': 'después',
+                'during': 'durante'
             },
             'fr': {
                 'Take medication': 'Prendre des médicaments',
-                'Follow up': 'Suivi',
-                'Rest': 'Repos',
-                'Return if symptoms worsen': 'Revenir si les symptômes s\'aggravent',
                 'medication': 'médicament',
                 'doctor': 'médecin',
-                'appointment': 'rendez-vous'
-            },
-            'de': {
-                'Take medication': 'Medikament einnehmen',
-                'Follow up': 'Nachbehandlung',
-                'Rest': 'Ruhe',
-                'Return if symptoms worsen': 'Zurückkehren wenn sich Symptome verschlechtern',
-                'medication': 'Medikament',
-                'doctor': 'Arzt',
-                'appointment': 'Termin'
+                'appointment': 'rendez-vous',
+                'Follow up': 'Suivi',
+                'Rest': 'Repos',
+                'Return if symptoms worsen': 'Revenir si les symptômes s\'aggravent'
             }
         };
+        
+        // Track which translation method worked
+        this.lastUsedMethod = 'none';
     }
 
     /**
-     * Main translation method - tries free service first
+     * Main translation method with enhanced debugging
      */
     async translate(text, targetLang, sourceLang = 'en') {
+        console.log('=== TRANSLATION DEBUG ===');
+        console.log('Input text:', text);
+        console.log('Target language:', targetLang);
+        console.log('Source language:', sourceLang);
+        
         if (targetLang === sourceLang) {
+            console.log('Same language, returning original');
             return {
                 translatedText: text,
                 confidence: 1.0,
@@ -47,111 +115,144 @@ class TranslationService {
             };
         }
 
-        try {
-            // Try LibreTranslate first (free service)
-            console.log('Attempting LibreTranslate...');
-            return await this.translateWithLibre(text, targetLang, sourceLang);
-        } catch (error) {
-            console.warn('LibreTranslate failed:', error.message);
-            
+        // Try multiple translation methods in order
+        const methods = [
+            () => this.translateWithLibreTranslate(text, targetLang, sourceLang),
+            () => this.translateWithEnhancedFallback(text, targetLang),
+            () => this.translateWithDemo(text, targetLang)
+        ];
+
+        for (let i = 0; i < methods.length; i++) {
             try {
-                // Fall back to enhanced word replacement
-                console.log('Using enhanced fallback translation...');
-                return this.translateWithEnhancedFallback(text, targetLang);
-            } catch (fallbackError) {
-                console.warn('Enhanced fallback failed, using demo mode:', fallbackError.message);
-                
-                // Final fallback to demo mode
-                return this.translateWithDemo(text, targetLang);
+                console.log(`Trying translation method ${i + 1}...`);
+                const result = await methods[i]();
+                console.log('Translation successful:', result);
+                return result;
+            } catch (error) {
+                console.warn(`Translation method ${i + 1} failed:`, error.message);
             }
         }
+
+        // If all methods fail, return demo mode
+        console.log('All translation methods failed, using demo mode');
+        return this.translateWithDemo(text, targetLang);
     }
 
     /**
-     * LibreTranslate API implementation (free service)
+     * LibreTranslate with multiple endpoint fallbacks
      */
-    async translateWithLibre(text, targetLang, sourceLang) {
+    async translateWithLibreTranslate(text, targetLang, sourceLang) {
         const textsToTranslate = Array.isArray(text) ? text : [text];
         const translations = [];
 
-        // Map common language codes
-        const langMap = {
-            'zh': 'zh-cn',
-            'ja': 'ja',
-            'ko': 'ko',
-            'ar': 'ar',
-            'hi': 'hi'
-        };
-        
-        const mappedTargetLang = langMap[targetLang] || targetLang;
+        // Try multiple LibreTranslate endpoints
+        const endpoints = [
+            'https://libretranslate.com/translate',  // Official hosted
+            'https://libretranslate.de/translate'    // Alternative
+        ];
 
-        for (const textItem of textsToTranslate) {
-            if (!textItem || textItem.trim().length === 0) {
-                translations.push(textItem);
-                continue;
+        let lastError = null;
+
+        for (const endpoint of endpoints) {
+            try {
+                console.log(`Trying LibreTranslate endpoint: ${endpoint}`);
+                
+                for (const textItem of textsToTranslate) {
+                    if (!textItem || textItem.trim().length === 0) {
+                        translations.push(textItem);
+                        continue;
+                    }
+
+                    const requestBody = {
+                        q: textItem.trim(),
+                        source: sourceLang,
+                        target: targetLang,
+                        format: 'text'
+                    };
+
+                    console.log('Request body:', requestBody);
+
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    console.log('Response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.log('Response error:', errorText);
+                        throw new Error(`LibreTranslate API error: ${response.status} - ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    if (data.error) {
+                        throw new Error(`LibreTranslate error: ${data.error}`);
+                    }
+                    
+                    translations.push(data.translatedText || textItem);
+                }
+
+                // If we get here, translation was successful
+                this.lastUsedMethod = 'LibreTranslate';
+                return {
+                    translatedText: Array.isArray(text) ? translations : translations[0],
+                    confidence: 0.8,
+                    service: `LibreTranslate (${endpoint})`
+                };
+
+            } catch (error) {
+                console.warn(`Endpoint ${endpoint} failed:`, error.message);
+                lastError = error;
+                translations.length = 0; // Reset translations for next endpoint
             }
-
-            const response = await fetch('https://libretranslate.de/translate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    q: textItem.trim(),
-                    source: sourceLang,
-                    target: mappedTargetLang,
-                    format: 'text'
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`LibreTranslate API error: ${response.status} - ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.error) {
-                throw new Error(`LibreTranslate error: ${data.error}`);
-            }
-            
-            translations.push(data.translatedText || textItem);
         }
 
-        return {
-            translatedText: Array.isArray(text) ? translations : translations[0],
-            confidence: 0.8,
-            service: 'LibreTranslate (Free)'
-        };
+        throw lastError || new Error('All LibreTranslate endpoints failed');
     }
 
     /**
-     * Enhanced fallback translation with better word replacement
+     * Enhanced fallback with better Spanish translations
      */
     translateWithEnhancedFallback(text, targetLang) {
+        console.log('Using enhanced fallback translation');
+        
         const textsToTranslate = Array.isArray(text) ? text : [text];
         const fallbackDict = this.fallbackTranslations[targetLang] || {};
         
         const translations = textsToTranslate.map(textItem => {
             let translated = textItem;
+            console.log('Translating:', textItem);
             
-            // Replace known phrases and words
-            Object.entries(fallbackDict).forEach(([english, foreign]) => {
-                // Try exact phrase match first
+            // Sort dictionary entries by length (longest first for better phrase matching)
+            const sortedEntries = Object.entries(fallbackDict).sort((a, b) => b[0].length - a[0].length);
+            
+            // Replace known phrases and words (case insensitive)
+            sortedEntries.forEach(([english, foreign]) => {
+                // Try exact phrase matches first
                 const exactRegex = new RegExp(`\\b${this.escapeRegex(english)}\\b`, 'gi');
+                const beforeReplace = translated;
                 translated = translated.replace(exactRegex, foreign);
                 
-                // Try partial word matches
-                const partialRegex = new RegExp(this.escapeRegex(english), 'gi');
-                translated = translated.replace(partialRegex, foreign);
+                if (translated !== beforeReplace) {
+                    console.log(`Replaced "${english}" with "${foreign}"`);
+                }
             });
             
+            console.log('Final translation:', translated);
             return translated;
         });
 
+        this.lastUsedMethod = 'Enhanced Fallback';
         return {
             translatedText: Array.isArray(text) ? translations : translations[0],
-            confidence: 0.4,
-            service: 'Enhanced Fallback'
+            confidence: 0.6,
+            service: 'Enhanced Fallback Translation'
         };
     }
 
@@ -159,41 +260,40 @@ class TranslationService {
      * Demo translation (adds language indicators)
      */
     translateWithDemo(text, targetLang) {
-        // Simulate processing delay
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const translations = {
-                    'es': ' (en español)',
-                    'fr': ' (en français)', 
-                    'de': ' (auf Deutsch)',
-                    'it': ' (in italiano)',
-                    'pt': ' (em português)',
-                    'zh': ' (中文)',
-                    'ja': ' (日本語)',
-                    'ko': ' (한국어)',
-                    'ar': ' (بالعربية)',
-                    'hi': ' (हिंदी में)'
-                };
-                
-                const suffix = translations[targetLang] || ` (in ${targetLang})`;
-                
-                if (Array.isArray(text)) {
-                    resolve({
-                        translatedText: text.map(t => t + suffix),
-                        confidence: 0.85,
-                        service: 'Demo Mode',
-                        originalText: text
-                    });
-                } else {
-                    resolve({
-                        translatedText: text + suffix,
-                        confidence: 0.85,
-                        service: 'Demo Mode',
-                        originalText: text
-                    });
-                }
-            }, 1000);
-        });
+        console.log('Using demo translation mode');
+        
+        const translations = {
+            'es': ' (en español)',
+            'fr': ' (en français)', 
+            'de': ' (auf Deutsch)',
+            'it': ' (in italiano)',
+            'pt': ' (em português)',
+            'zh': ' (中文)',
+            'ja': ' (日本語)',
+            'ko': ' (한국어)',
+            'ar': ' (بالعربية)',
+            'hi': ' (हिंदी में)'
+        };
+        
+        const suffix = translations[targetLang] || ` (in ${targetLang})`;
+        
+        this.lastUsedMethod = 'Demo Mode';
+        
+        if (Array.isArray(text)) {
+            return {
+                translatedText: text.map(t => t + suffix),
+                confidence: 0.85,
+                service: 'Demo Mode',
+                originalText: text
+            };
+        } else {
+            return {
+                translatedText: text + suffix,
+                confidence: 0.85,
+                service: 'Demo Mode',
+                originalText: text
+            };
+        }
     }
 
     /**
@@ -202,4 +302,54 @@ class TranslationService {
     escapeRegex(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
+
+    /**
+     * Get translation service status for debugging
+     */
+    getDebugInfo() {
+        return {
+            lastUsedMethod: this.lastUsedMethod,
+            availableFallbackLanguages: Object.keys(this.fallbackTranslations),
+            timestamp: new Date().toISOString()
+        };
+    }
+}
+
+/**
+ * Test translation function for debugging
+ */
+async function testTranslation() {
+    console.log('=== TESTING TRANSLATION SERVICE ===');
+    
+    const translator = new TranslationService();
+    
+    const testTexts = [
+        'Take medication twice daily',
+        'Follow up with doctor in 2 weeks',
+        'Return if symptoms worsen'
+    ];
+    
+    for (const testText of testTexts) {
+        console.log(`\n--- Testing: "${testText}" ---`);
+        
+        try {
+            const result = await translator.translate(testText, 'es', 'en');
+            console.log('SUCCESS:', result);
+        } catch (error) {
+            console.error('FAILED:', error);
+        }
+    }
+    
+    console.log('\nDebug info:', translator.getDebugInfo());
+}
+
+// Add test button for debugging
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        const testButton = document.createElement('button');
+        testButton.textContent = 'Test Translation';
+        testButton.onclick = testTranslation;
+        testButton.style.cssText = 'position: fixed; top: 50px; right: 10px; z-index: 1000; padding: 10px; background: #dc2626; color: white; border: none; border-radius: 5px; cursor: pointer;';
+        document.body.appendChild(testButton);
+    });
 }
