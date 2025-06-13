@@ -696,11 +696,3 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to initialize Discharge Translator App:', error);
     }
 });
-// Initialize the application when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        window.dischargeApp = new DischargeTranslatorApp();
-    } catch (error) {
-        console.error('Failed to initialize Discharge Translator App:', error);
-    }
-});
