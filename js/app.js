@@ -387,7 +387,7 @@ async generateDischargeDocument(format = 'pdf') {
     displayResults(data, translationResults = null) {
         const outputSection = document.getElementById('output');
         const outputContent = document.getElementById('outputContent');
-    /**
+/**
      * Display processed results
      */
     displayResults(data, translationResults = null) {
@@ -506,18 +506,6 @@ async generateDischargeDocument(format = 'pdf') {
             this.shareInstructions();
         });
     }
-        document.getElementById('printBtn')?.addEventListener('click', () => {
-            this.printInstructions();
-        });
-        
-        document.getElementById('shareBtn')?.addEventListener('click', () => {
-            this.shareInstructions();
-        });
-    }
-            defaultSection.innerHTML = `
-                <h3>📋 Discharge Information</h3>
-                <div class="section-content">
-                    <p>Your discharge information has been processed and translated.</p>
                     <p>If specific sections are not shown above, your discharge instructions may be in a format that requires manual review.</p>
                 </div>
             `;
