@@ -1,6 +1,6 @@
 /**
- * Enhanced Main Application Controller for Discharge Instructions Translator
- * Now includes QR Code Generation capabilities
+ * Fixed Main Application Controller - QR Code Generation Fix
+ * This should replace your current app.js
  */
 
 class DischargeTranslatorApp {
@@ -14,6 +14,8 @@ class DischargeTranslatorApp {
         this.currentData = null;
         this.isProcessing = false;
         this.currentQRCode = null;
+        this.currentParsedData = null;
+        this.currentTranslatedData = null;
         
         this.init();
     }
@@ -27,9 +29,9 @@ class DischargeTranslatorApp {
             this.updateLanguageDisplay();
             this.checkBrowserSupport();
             
-            console.log('Discharge Translator App initialized successfully');
+            console.log('✅ Discharge Translator App initialized successfully');
         } catch (error) {
-            console.error('Error initializing app:', error);
+            console.error('❌ Error initializing app:', error);
             this.showError('Failed to initialize application. Please refresh the page.');
         }
     }
@@ -63,7 +65,7 @@ class DischargeTranslatorApp {
             this.processManualInput();
         });
 
-        // Action buttons (will be dynamically updated with QR code generation)
+        // Action buttons (will be dynamically updated)
         document.getElementById('printBtn')?.addEventListener('click', () => {
             this.printInstructions();
         });
@@ -91,7 +93,8 @@ class DischargeTranslatorApp {
             camera: navigator.mediaDevices && navigator.mediaDevices.getUserMedia,
             fetch: !!window.fetch,
             promises: !!window.Promise,
-            qrcode: typeof QRCode !== 'undefined'
+            qrcode: typeof QRCode !== 'undefined',
+            jspdf: typeof jsPDF !== 'undefined'
         };
 
         const unsupported = Object.entries(features)
@@ -99,7 +102,7 @@ class DischargeTranslatorApp {
             .map(([feature]) => feature);
 
         if (unsupported.length > 0) {
-            console.warn('Unsupported features:', unsupported);
+            console.warn('⚠️ Unsupported features:', unsupported);
             
             if (!features.camera) {
                 this.showWarning('Camera access not available. You can still use manual input.');
@@ -107,13 +110,19 @@ class DischargeTranslatorApp {
             }
             
             if (!features.qrcode) {
-                this.showWarning('QR Code generation library not loaded. QR codes will not be available.');
+                this.showWarning('QR Code generation library not loaded. QR codes will use fallback method.');
+            }
+            
+            if (!features.jspdf) {
+                this.showWarning('PDF generation library not loaded. PDF downloads may not work.');
             }
             
             if (!features.fetch) {
                 this.showError('This browser is not supported. Please use a modern browser.');
                 return;
             }
+        } else {
+            console.log('✅ All browser features supported');
         }
     }
 
@@ -263,7 +272,7 @@ class DischargeTranslatorApp {
     }
 
     /**
-     * Main data processing method with QR code generation
+     * Main data processing method with enhanced QR code generation
      */
     async processDischargeData(rawData, isRetranslation = false) {
         if (this.isProcessing && !isRetranslation) {
@@ -281,7 +290,9 @@ class DischargeTranslatorApp {
             }
 
             // Parse the medical data
+            console.log('🔄 Parsing medical data...');
             const parsedData = this.medicalParser.parseDischargeData(rawData);
+            this.currentParsedData = parsedData;
 
             // Translate if needed
             let translatedData = parsedData;
@@ -293,20 +304,24 @@ class DischargeTranslatorApp {
                 translationResults = await this.translateMedicalData(parsedData);
                 translatedData = translationResults.data;
             }
+            
+            this.currentTranslatedData = translatedData;
 
-            // Generate QR code for the processed data
-            if (typeof QRCode !== 'undefined') {
-                this.showStatus('Generating QR code for mobile access...', 'info');
-                try {
-                    this.currentQRCode = await this.documentGenerator.generateQRCode(
-                        parsedData, 
-                        translatedData, 
-                        this.currentLanguage
-                    );
-                } catch (qrError) {
-                    console.warn('QR code generation failed:', qrError);
-                    this.currentQRCode = null;
-                }
+            // CRITICAL: Generate QR code for the processed data
+            console.log('🔄 Starting QR code generation...');
+            this.showStatus('Generating QR code for mobile access...', 'info');
+            
+            try {
+                this.currentQRCode = await this.documentGenerator.generateQRCode(
+                    parsedData, 
+                    translatedData, 
+                    this.currentLanguage
+                );
+                console.log('✅ QR code generated successfully:', this.currentQRCode);
+            } catch (qrError) {
+                console.error('❌ QR code generation failed:', qrError);
+                this.showWarning('QR code generation failed, but downloads are still available.');
+                this.currentQRCode = null;
             }
 
             // Display results
@@ -315,7 +330,7 @@ class DischargeTranslatorApp {
             this.hideStatus();
 
         } catch (error) {
-            console.error('Error processing discharge data:', error);
+            console.error('❌ Error processing discharge data:', error);
             this.showError(`Error processing data: ${error.message}`);
         } finally {
             this.isProcessing = false;
@@ -384,19 +399,19 @@ class DischargeTranslatorApp {
         }
 
         try {
-            this.showStatus('Generating professional discharge document...', 'info');
+            this.showStatus(`Generating professional ${format.toUpperCase()} document...`, 'info');
 
-            // Parse the medical data
-            const parsedData = this.medicalParser.parseDischargeData(this.currentData);
+            // Use stored parsed and translated data
+            const parsedData = this.currentParsedData || this.medicalParser.parseDischargeData(this.currentData);
+            let translationData = this.currentTranslatedData || parsedData;
 
-            // Get translation data if not English
-            let translationData = parsedData;
-            if (this.currentLanguage !== 'en') {
+            // Get translation data if not already available
+            if (this.currentLanguage !== 'en' && !this.currentTranslatedData) {
                 const translationResults = await this.translateMedicalData(parsedData);
                 translationData = translationResults.data;
             }
 
-            // Configure hospital branding (you can customize this)
+            // Configure hospital branding
             this.documentGenerator.configureHospital({
                 name: 'Medical Center',
                 address: '123 Healthcare Drive, Medical City, ST 12345',
@@ -407,6 +422,7 @@ class DischargeTranslatorApp {
 
             // Generate document with QR code
             if (format === 'pdf') {
+                console.log('🔄 Generating PDF...');
                 const pdfData = await this.documentGenerator.generatePDF(
                     parsedData, 
                     translationData, 
@@ -415,9 +431,10 @@ class DischargeTranslatorApp {
                 
                 // Download the PDF
                 this.documentGenerator.downloadDocument(pdfData, 'pdf');
-                this.showSuccess('Professional discharge document with QR code downloaded successfully!');
+                this.showSuccess('Professional discharge PDF with QR code downloaded successfully!');
                 
             } else if (format === 'html') {
+                console.log('🔄 Generating HTML...');
                 const htmlData = await this.documentGenerator.generateHTML(
                     parsedData, 
                     translationData, 
@@ -426,14 +443,14 @@ class DischargeTranslatorApp {
                 
                 // Download the HTML document
                 this.documentGenerator.downloadDocument(htmlData, 'html');
-                this.showSuccess('Discharge document with QR code downloaded successfully!');
+                this.showSuccess('Discharge HTML document with QR code downloaded successfully!');
             }
 
             this.hideStatus();
 
         } catch (error) {
-            console.error('Error generating document:', error);
-            this.showError(`Failed to generate document: ${error.message}`);
+            console.error('❌ Error generating document:', error);
+            this.showError(`Failed to generate ${format.toUpperCase()}: ${error.message}`);
             this.hideStatus();
         }
     }
@@ -446,7 +463,7 @@ class DischargeTranslatorApp {
         const outputContent = document.getElementById('outputContent');
         
         if (!outputSection || !outputContent) {
-            console.error('Output elements not found');
+            console.error('❌ Output elements not found');
             return;
         }
 
@@ -458,7 +475,10 @@ class DischargeTranslatorApp {
 
         // Add QR code section if available
         if (this.currentQRCode) {
+            console.log('✅ Displaying QR code in interface');
             this.documentGenerator.displayQRCode(this.currentQRCode, this.currentLanguage);
+        } else {
+            console.log('⚠️ No QR code available to display');
         }
 
         // Define sections with their display information
@@ -520,7 +540,7 @@ class DischargeTranslatorApp {
             outputContent.appendChild(defaultSection);
         }
         
-        // Update action buttons with new download and QR options
+        // Update action buttons with download options
         this.updateActionButtons();
         
         // Show the output section
@@ -548,14 +568,17 @@ class DischargeTranslatorApp {
         
         // Re-attach event listeners for the new buttons
         document.getElementById('downloadPdfBtn')?.addEventListener('click', () => {
+            console.log('📄 PDF download button clicked');
             this.generateDischargeDocument('pdf');
         });
         
         document.getElementById('downloadHtmlBtn')?.addEventListener('click', () => {
+            console.log('🌐 HTML download button clicked');
             this.generateDischargeDocument('html');
         });
         
         document.getElementById('generateQRBtn')?.addEventListener('click', () => {
+            console.log('📱 QR code view button clicked');
             this.showQRCodeModal();
         });
         
@@ -566,6 +589,8 @@ class DischargeTranslatorApp {
         document.getElementById('shareBtn')?.addEventListener('click', () => {
             this.shareInstructions();
         });
+        
+        console.log('✅ Action buttons updated and event listeners attached');
     }
 
     /**
@@ -590,6 +615,7 @@ class DischargeTranslatorApp {
                     <img src="${this.currentQRCode.dataURL}" alt="QR Code" class="qr-modal-image">
                     <p>Scan this QR code with your smartphone to access these discharge instructions on your mobile device.</p>
                     <p><strong>Note:</strong> The QR code contains encrypted medical data for secure access.</p>
+                    ${this.currentQRCode.isPlaceholder ? '<p style="color: #dc3545;">⚠️ QR code generation failed, but downloads are still available.</p>' : ''}
                 </div>
             </div>
         `;
@@ -793,6 +819,8 @@ class DischargeTranslatorApp {
         return text;
     }
 
+    // ========== STATUS MESSAGE METHODS ==========
+
     /**
      * Show status message
      */
@@ -888,7 +916,8 @@ class DischargeTranslatorApp {
 document.addEventListener('DOMContentLoaded', () => {
     try {
         window.dischargeApp = new DischargeTranslatorApp();
+        console.log('✅ App initialization completed');
     } catch (error) {
-        console.error('Failed to initialize Discharge Translator App:', error);
+        console.error('❌ Failed to initialize Discharge Translator App:', error);
     }
 });
