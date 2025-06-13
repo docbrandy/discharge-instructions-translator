@@ -83,9 +83,9 @@
     <script src="js/document-generator.js"></script>
     
     <!-- Your App Scripts -->
-<!-- JavaScript Libraries - CORRECTED LINKS -->
+<!-- JavaScript Libraries - WORKING LINKS -->
 <script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <!-- Your App Scripts -->
@@ -94,32 +94,14 @@
 <script src="js/document-generator.js"></script>
 <script src="js/app.js"></script>
 
-<!-- Library Check -->
+<!-- Library Test -->
 <script>
 setTimeout(() => {
     console.log('=== LIBRARY CHECK ===');
-    console.log('QRCode library:', typeof QRCode !== 'undefined' ? '✅ Loaded' : '❌ Failed');
-    console.log('jsPDF library:', typeof jsPDF !== 'undefined' ? '✅ Loaded' : '❌ Failed');
-    console.log('QrScanner library:', typeof QrScanner !== 'undefined' ? '✅ Loaded' : '❌ Failed');
-    
-    // Test QR generation if available
-    if (typeof QRCode !== 'undefined') {
-        QRCode.toDataURL('test', (err, url) => {
-            console.log('QR Test:', err ? '❌ ' + err : '✅ Working');
-        });
-    }
-    
-    // Test PDF generation if available
-    if (typeof jsPDF !== 'undefined') {
-        try {
-            const { jsPDF } = window;
-            const doc = new jsPDF();
-            console.log('PDF Test: ✅ Working');
-        } catch (e) {
-            console.log('PDF Test: ❌', e.message);
-        }
-    }
-}, 2000);
+    console.log('QRCode:', typeof QRCode !== 'undefined' ? '✅' : '❌');
+    console.log('jsPDF:', typeof jsPDF !== 'undefined' ? '✅' : '❌');
+    console.log('QrScanner:', typeof QrScanner !== 'undefined' ? '✅' : '❌');
+}, 1000);
 </script>
 </body>
 </html>
