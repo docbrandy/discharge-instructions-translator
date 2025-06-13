@@ -13,6 +13,11 @@ class TranslationService {
         this.fallbackTranslations = {
             'es': {
                 // Complete medical phrases first (most specific)
+                // Exact phrase matches for tylenol
+'take tylenol 1000mg three times daily for pain': 'toma tylenol 1000mg tres veces al día para el dolor',
+'take tylenol 1000 mg three times daily for pain': 'toma tylenol 1000 mg tres veces al día para el dolor',
+'tylenol 1000mg three times daily for pain': 'tylenol 1000mg tres veces al día para el dolor',
+'tylenol 1000 mg three times daily for pain': 'tylenol 1000 mg tres veces al día para el dolor',
                 'Take medication twice daily': 'Toma medicamento dos veces al día',
                 'tylenol 1000 milligrams three times daily for pain': 'tylenol 1000 miligramos tres veces al día para el dolor',
                 'three times daily for pain': 'tres veces al día para el dolor',
