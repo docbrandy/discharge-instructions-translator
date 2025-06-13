@@ -7,6 +7,7 @@ class DischargeTranslatorApp {
     constructor() {
         this.translationService = new TranslationService();
         this.medicalParser = new MedicalDataParser();
+        this.documentGenerator = new MedicalDocumentGenerator();
         this.qrScanner = null;
         this.currentLanguage = 'en';
         this.isScanning = false;
@@ -70,6 +71,14 @@ class DischargeTranslatorApp {
             this.shareInstructions();
         });
 
+// NEW DOCUMENT GENERATION BUTTONS
+document.getElementById('downloadPdfBtn')?.addEventListener('click', () => {
+    this.generateDischargeDocument('pdf');
+});
+
+document.getElementById('downloadHtmlBtn')?.addEventListener('click', () => {
+    this.generateDischargeDocument('html');
+});
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -309,7 +318,69 @@ class DischargeTranslatorApp {
 
         return translationResults;
     }
+/**
+ * Generate and download professional discharge document
+ */
+async generateDischargeDocument(format = 'pdf') {
+    if (!this.currentData) {
+        this.showError('No discharge data available. Please process discharge information first.');
+        return;
+    }
 
+    try {
+        this.showStatus('Generating professional discharge document...', 'info');
+
+        // Parse the medical data
+        const parsedData = this.medicalParser.parseDischargeData(this.currentData);
+
+        // Get translation data if not English
+        let translationData = parsedData;
+        if (this.currentLanguage !== 'en') {
+            const translationResults = await this.translateMedicalData(parsedData);
+            translationData = translationResults.data;
+        }
+
+        // Configure hospital branding (you can customize this)
+        this.documentGenerator.configureHospital({
+            name: 'Medical Center',
+            address: '123 Healthcare Drive, Medical City, ST 12345',
+            phone: '(555) 123-CARE',
+            primaryColor: '#003366',
+            secondaryColor: '#0066CC'
+        });
+
+        // Generate document
+        if (format === 'pdf') {
+            const pdfData = await this.documentGenerator.generatePDF(
+                parsedData, 
+                translationData, 
+                this.currentLanguage
+            );
+            
+            // Download the PDF
+            this.documentGenerator.downloadDocument(pdfData, 'pdf');
+            this.showSuccess('Professional discharge document downloaded successfully!');
+            
+        } else if (format === 'html') {
+            const htmlData = this.documentGenerator.generateHTML(
+                parsedData, 
+                translationData, 
+                this.currentLanguage
+            );
+            
+            // Download the HTML document
+            this.documentGenerator.downloadDocument(htmlData, 'html');
+            this.showSuccess('Discharge document downloaded successfully!');
+        }
+
+        this.hideStatus();
+
+    } catch (error) {
+        console.error('Error generating document:', error);
+        this.showError(`Failed to generate document: ${error.message}`);
+        this.hideStatus();
+    }
+}
     /**
      * Display processed results
      */
@@ -386,7 +457,10 @@ class DischargeTranslatorApp {
             `;
             outputContent.appendChild(defaultSection);
         }
-
+        
+// Update action buttons with new download options
+this.updateActionButtons();
+        
         // Show the output section
         outputSection.classList.add('show');
         
