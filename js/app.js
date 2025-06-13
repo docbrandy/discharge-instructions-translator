@@ -387,7 +387,7 @@ async generateDischargeDocument(format = 'pdf') {
     displayResults(data, translationResults = null) {
         const outputSection = document.getElementById('output');
         const outputContent = document.getElementById('outputContent');
-/**
+    /**
      * Display processed results
      */
     displayResults(data, translationResults = null) {
@@ -498,6 +498,14 @@ async generateDischargeDocument(format = 'pdf') {
             this.generateDischargeDocument('html');
         });
         
+        document.getElementById('printBtn')?.addEventListener('click', () => {
+            this.printInstructions();
+        });
+        
+        document.getElementById('shareBtn')?.addEventListener('click', () => {
+            this.shareInstructions();
+        });
+    }
         document.getElementById('printBtn')?.addEventListener('click', () => {
             this.printInstructions();
         });
