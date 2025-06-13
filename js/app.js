@@ -1,6 +1,6 @@
 /**
- * Fixed Main Application Controller - QR Code Generation Fix
- * This should replace your current app.js
+ * Complete Working Discharge Translator App
+ * Replace your js/app.js with this complete version
  */
 
 class DischargeTranslatorApp {
@@ -20,8 +20,24 @@ class DischargeTranslatorApp {
         this.init();
     }
 
-// In the init() method of DischargeTranslatorApp class, add:
-this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqdrpwPZZWBaJQQJ99BFACYeBjFXJ3w3AAAbACOGtOR6', 'eastus');
+    /**
+     * Initialize the application
+     */
+    async init() {
+        try {
+            // Configure Azure Translator (add your credentials here if needed)
+            // this.translationService.setAzureKey('YOUR_API_KEY', 'YOUR_REGION');
+            
+            this.setupEventListeners();
+            this.updateLanguageDisplay();
+            this.checkBrowserSupport();
+            
+            console.log('✅ Complete Discharge Translator App initialized successfully');
+        } catch (error) {
+            console.error('❌ Error initializing app:', error);
+            this.showError('Failed to initialize application. Please refresh the page.');
+        }
+    }
 
     /**
      * Setup event listeners for UI elements
@@ -49,10 +65,11 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
 
         // Manual input processing
         document.getElementById('processManual')?.addEventListener('click', () => {
+            console.log('🔄 Process button clicked');
             this.processManualInput();
         });
 
-        // Action buttons (will be dynamically updated)
+        // Print and Share buttons (will be enhanced with download buttons)
         document.getElementById('printBtn')?.addEventListener('click', () => {
             this.printInstructions();
         });
@@ -70,6 +87,8 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
                 this.printInstructions();
             }
         });
+
+        console.log('✅ Event listeners attached');
     }
 
     /**
@@ -97,16 +116,11 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
             }
             
             if (!features.qrcode) {
-                this.showWarning('QR Code generation library not loaded. QR codes will use fallback method.');
+                this.showWarning('QR Code generation will use fallback method.');
             }
             
             if (!features.jspdf) {
-                this.showWarning('PDF generation library not loaded. PDF downloads may not work.');
-            }
-            
-            if (!features.fetch) {
-                this.showError('This browser is not supported. Please use a modern browser.');
-                return;
+                this.showWarning('PDF downloads will use fallback method.');
             }
         } else {
             console.log('✅ All browser features supported');
@@ -250,6 +264,8 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
     processManualInput() {
         const input = document.getElementById('manualInput')?.value?.trim();
         
+        console.log('📝 Manual input received:', input);
+        
         if (!input) {
             this.showError('Please enter some discharge information.');
             return;
@@ -259,7 +275,7 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
     }
 
     /**
-     * Main data processing method with enhanced QR code generation
+     * Main data processing method
      */
     async processDischargeData(rawData, isRetranslation = false) {
         if (this.isProcessing && !isRetranslation) {
@@ -280,41 +296,54 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
             console.log('🔄 Parsing medical data...');
             const parsedData = this.medicalParser.parseDischargeData(rawData);
             this.currentParsedData = parsedData;
+            console.log('✅ Parsed data:', parsedData);
 
-            // Translate if needed
-            let translatedData = parsedData;
-            let translationResults = null;
+            // Prepare data for translation
+            let dataToTranslate = [];
+            let translatedData = { ...parsedData };
 
             if (this.currentLanguage !== 'en') {
                 this.showStatus('Translating to your selected language...', 'info');
 
-                translationResults = await this.translateMedicalData(parsedData);
-                translatedData = translationResults.data;
+                // Collect all text that needs translation
+                const sectionsToTranslate = ['diagnoses', 'medications', 'instructions', 'returnReasons', 'followUp', 'procedures'];
+                
+                for (const section of sectionsToTranslate) {
+                    if (parsedData[section] && parsedData[section].length > 0) {
+                        console.log(`🔄 Translating ${section}:`, parsedData[section]);
+                        
+                        try {
+                            const result = await this.translationService.translate(
+                                parsedData[section],
+                                this.currentLanguage,
+                                'en'
+                            );
+                            
+                            translatedData[section] = Array.isArray(result.translatedText) 
+                                ? result.translatedText 
+                                : [result.translatedText];
+                                
+                            console.log(`✅ Translated ${section}:`, translatedData[section]);
+                            
+                        } catch (error) {
+                            console.error(`❌ Translation failed for ${section}:`, error);
+                            // Keep original data if translation fails
+                            translatedData[section] = parsedData[section];
+                        }
+                    }
+                }
             }
             
             this.currentTranslatedData = translatedData;
 
-            // CRITICAL: Generate QR code for the processed data
-            console.log('🔄 Starting QR code generation...');
-            this.showStatus('Generating QR code for mobile access...', 'info');
-            
-            try {
-                this.currentQRCode = await this.documentGenerator.generateQRCode(
-                    parsedData, 
-                    translatedData, 
-                    this.currentLanguage
-                );
-                console.log('✅ QR code generated successfully:', this.currentQRCode);
-            } catch (qrError) {
-                console.error('❌ QR code generation failed:', qrError);
-                this.showWarning('QR code generation failed, but downloads are still available.');
-                this.currentQRCode = null;
-            }
+            // Generate QR code (non-blocking)
+            this.generateQRCodeAsync(parsedData, translatedData);
 
             // Display results
-            this.displayResults(translatedData, translationResults);
+            this.displayResults(translatedData);
             
             this.hideStatus();
+            this.showSuccess('Processing completed successfully!');
 
         } catch (error) {
             console.error('❌ Error processing discharge data:', error);
@@ -325,55 +354,40 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
     }
 
     /**
-     * Translate medical data to target language
+     * Generate QR code asynchronously (non-blocking)
      */
-    async translateMedicalData(parsedData) {
-        const sectionsToTranslate = [
-            'diagnoses', 'medications', 'instructions', 
-            'returnReasons', 'followUp', 'procedures'
-        ];
+    async generateQRCodeAsync(parsedData, translatedData) {
+        try {
+            console.log('🔄 Generating QR code...');
+            this.currentQRCode = await this.documentGenerator.generateQRCode(
+                parsedData, 
+                translatedData, 
+                this.currentLanguage
+            );
+            console.log('✅ QR code generated:', this.currentQRCode);
+            
+            // Update the display with QR code
+            this.updateQRCodeDisplay();
+            
+        } catch (error) {
+            console.warn('⚠️ QR code generation failed:', error);
+            this.currentQRCode = null;
+        }
+    }
 
-        const translationResults = {
-            data: { ...parsedData },
-            confidence: 0,
-            service: '',
-            errors: []
-        };
-
-        let totalConfidence = 0;
-        let translationCount = 0;
-
-        for (const section of sectionsToTranslate) {
-            if (parsedData[section] && parsedData[section].length > 0) {
-                try {
-                    const result = await this.translationService.translate(
-                        parsedData[section],
-                        this.currentLanguage,
-                        'en'
-                    );
-
-                    translationResults.data[section] = Array.isArray(result.translatedText) 
-                        ? result.translatedText 
-                        : [result.translatedText];
-
-                    totalConfidence += result.confidence;
-                    translationCount++;
-                    
-                    if (!translationResults.service) {
-                        translationResults.service = result.service;
-                    }
-
-                } catch (error) {
-                    console.error(`Error translating ${section}:`, error);
-                    translationResults.errors.push(`Failed to translate ${section}: ${error.message}`);
-                }
+    /**
+     * Update QR code display in the interface
+     */
+    updateQRCodeDisplay() {
+        if (this.currentQRCode) {
+            this.documentGenerator.displayQRCode(this.currentQRCode, this.currentLanguage);
+            
+            // Show QR code button if available
+            const qrBtn = document.getElementById('generateQRBtn');
+            if (qrBtn) {
+                qrBtn.style.display = 'inline-block';
             }
         }
-
-        // Calculate average confidence
-        translationResults.confidence = translationCount > 0 ? totalConfidence / translationCount : 0;
-
-        return translationResults;
     }
 
     /**
@@ -386,17 +400,11 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
         }
 
         try {
-            this.showStatus(`Generating professional ${format.toUpperCase()} document...`, 'info');
+            this.showStatus(`Generating ${format.toUpperCase()} document...`, 'info');
 
-            // Use stored parsed and translated data
+            // Use stored data
             const parsedData = this.currentParsedData || this.medicalParser.parseDischargeData(this.currentData);
-            let translationData = this.currentTranslatedData || parsedData;
-
-            // Get translation data if not already available
-            if (this.currentLanguage !== 'en' && !this.currentTranslatedData) {
-                const translationResults = await this.translateMedicalData(parsedData);
-                translationData = translationResults.data;
-            }
+            const translationData = this.currentTranslatedData || parsedData;
 
             // Configure hospital branding
             this.documentGenerator.configureHospital({
@@ -407,7 +415,7 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
                 secondaryColor: '#0066CC'
             });
 
-            // Generate document with QR code
+            // Generate document
             if (format === 'pdf') {
                 console.log('🔄 Generating PDF...');
                 const pdfData = await this.documentGenerator.generatePDF(
@@ -416,9 +424,8 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
                     this.currentLanguage
                 );
                 
-                // Download the PDF
                 this.documentGenerator.downloadDocument(pdfData, 'pdf');
-                this.showSuccess('Professional discharge PDF with QR code downloaded successfully!');
+                this.showSuccess('PDF document downloaded successfully!');
                 
             } else if (format === 'html') {
                 console.log('🔄 Generating HTML...');
@@ -428,24 +435,23 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
                     this.currentLanguage
                 );
                 
-                // Download the HTML document
                 this.documentGenerator.downloadDocument(htmlData, 'html');
-                this.showSuccess('Discharge HTML document with QR code downloaded successfully!');
+                this.showSuccess('HTML document downloaded successfully!');
             }
 
             this.hideStatus();
 
         } catch (error) {
-            console.error('❌ Error generating document:', error);
+            console.error('❌ Document generation failed:', error);
             this.showError(`Failed to generate ${format.toUpperCase()}: ${error.message}`);
             this.hideStatus();
         }
     }
 
     /**
-     * Display processed results with QR code
+     * Display processed results
      */
-    displayResults(data, translationResults = null) {
+    displayResults(data) {
         const outputSection = document.getElementById('output');
         const outputContent = document.getElementById('outputContent');
         
@@ -459,14 +465,6 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
 
         // Clear previous content
         outputContent.innerHTML = '';
-
-        // Add QR code section if available
-        if (this.currentQRCode) {
-            console.log('✅ Displaying QR code in interface');
-            this.documentGenerator.displayQRCode(this.currentQRCode, this.currentLanguage);
-        } else {
-            console.log('⚠️ No QR code available to display');
-        }
 
         // Define sections with their display information
         const sections = [
@@ -535,37 +533,39 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
         
         // Scroll to results
         outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        console.log('✅ Results displayed');
     }
 
     /**
-     * Update action buttons with enhanced download and QR options
+     * Update action buttons with download and QR options
      */
     updateActionButtons() {
         const actionButtons = document.querySelector('.action-buttons');
         if (!actionButtons) return;
         
-        // Update the action buttons HTML to include download and QR options
+        // Update the action buttons HTML
         actionButtons.innerHTML = `
             <button id="downloadPdfBtn" class="btn btn-download-pdf">📄 Download PDF with QR</button>
             <button id="downloadHtmlBtn" class="btn btn-download-html">🌐 Download HTML with QR</button>
-            <button id="generateQRBtn" class="btn btn-qr" ${!this.currentQRCode ? 'style="display:none"' : ''}>📱 View QR Code</button>
+            <button id="generateQRBtn" class="btn btn-qr" style="display:none;">📱 View QR Code</button>
             <button id="printBtn" class="btn btn-print">🖨️ Print Instructions</button>
             <button id="shareBtn" class="btn btn-share">📤 Share</button>
         `;
         
-        // Re-attach event listeners for the new buttons
+        // Attach event listeners
         document.getElementById('downloadPdfBtn')?.addEventListener('click', () => {
-            console.log('📄 PDF download button clicked');
+            console.log('📄 PDF download clicked');
             this.generateDischargeDocument('pdf');
         });
         
         document.getElementById('downloadHtmlBtn')?.addEventListener('click', () => {
-            console.log('🌐 HTML download button clicked');
+            console.log('🌐 HTML download clicked');
             this.generateDischargeDocument('html');
         });
         
         document.getElementById('generateQRBtn')?.addEventListener('click', () => {
-            console.log('📱 QR code view button clicked');
+            console.log('📱 QR view clicked');
             this.showQRCodeModal();
         });
         
@@ -577,15 +577,15 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
             this.shareInstructions();
         });
         
-        console.log('✅ Action buttons updated and event listeners attached');
+        console.log('✅ Action buttons updated');
     }
 
     /**
-     * Show QR code in a modal/popup
+     * Show QR code in a modal
      */
     showQRCodeModal() {
         if (!this.currentQRCode) {
-            this.showError('No QR code available.');
+            this.showError('QR code not available yet. Please wait for generation to complete.');
             return;
         }
 
@@ -602,7 +602,6 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
                     <img src="${this.currentQRCode.dataURL}" alt="QR Code" class="qr-modal-image">
                     <p>Scan this QR code with your smartphone to access these discharge instructions on your mobile device.</p>
                     <p><strong>Note:</strong> The QR code contains encrypted medical data for secure access.</p>
-                    ${this.currentQRCode.isPlaceholder ? '<p style="color: #dc3545;">⚠️ QR code generation failed, but downloads are still available.</p>' : ''}
                 </div>
             </div>
         `;
@@ -720,7 +719,7 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
     }
 
     /**
-     * Share instructions with QR code option
+     * Share instructions
      */
     async shareInstructions() {
         const outputSection = document.getElementById('output');
@@ -733,26 +732,20 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
         // Extract text content for sharing
         const textContent = this.extractTextContent();
         
-        // Add QR code information to share text
-        let shareText = textContent;
-        if (this.currentQRCode) {
-            shareText += '\n\nMobile Access: A QR code is available for mobile access to these instructions.';
-        }
-        
         if (navigator.share) {
             try {
                 await navigator.share({
                     title: 'Discharge Instructions',
-                    text: shareText,
+                    text: textContent,
                     url: window.location.href
                 });
             } catch (error) {
                 if (error.name !== 'AbortError') {
-                    this.fallbackShare(shareText);
+                    this.fallbackShare(textContent);
                 }
             }
         } else {
-            this.fallbackShare(shareText);
+            this.fallbackShare(textContent);
         }
     }
 
@@ -903,8 +896,8 @@ this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqd
 document.addEventListener('DOMContentLoaded', () => {
     try {
         window.dischargeApp = new DischargeTranslatorApp();
-        console.log('✅ App initialization completed');
+        console.log('✅ Complete app initialization finished');
     } catch (error) {
-        console.error('❌ Failed to initialize Discharge Translator App:', error);
+        console.error('❌ Failed to initialize Complete Discharge Translator App:', error);
     }
 });
