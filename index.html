@@ -83,26 +83,33 @@
     <script src="js/document-generator.js"></script>
     
     <!-- Your App Scripts -->
-    <script src="js/translator.js"></script>
-    <script src="js/medical-parser.js"></script>
-    <script src="js/app.js"></script>
-    <!-- Temporary diagnostic script -->
+<!-- JavaScript Libraries - CORRECTED LINKS -->
+<script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- Your App Scripts -->
+<script src="js/translator.js"></script>
+<script src="js/medical-parser.js"></script>
+<script src="js/document-generator.js"></script>
+<script src="js/app.js"></script>
+
+<!-- Library Check -->
 <script>
-// Test if libraries loaded correctly
 setTimeout(() => {
-    console.log('🔍 LIBRARY CHECK:');
-    console.log('QrScanner:', typeof QrScanner !== 'undefined' ? '✅' : '❌');
-    console.log('QRCode:', typeof QRCode !== 'undefined' ? '✅' : '❌');
-    console.log('jsPDF:', typeof jsPDF !== 'undefined' ? '✅' : '❌');
+    console.log('=== LIBRARY CHECK ===');
+    console.log('QRCode library:', typeof QRCode !== 'undefined' ? '✅ Loaded' : '❌ Failed');
+    console.log('jsPDF library:', typeof jsPDF !== 'undefined' ? '✅ Loaded' : '❌ Failed');
+    console.log('QrScanner library:', typeof QrScanner !== 'undefined' ? '✅ Loaded' : '❌ Failed');
     
-    // Test QR code generation
+    // Test QR generation if available
     if (typeof QRCode !== 'undefined') {
         QRCode.toDataURL('test', (err, url) => {
             console.log('QR Test:', err ? '❌ ' + err : '✅ Working');
         });
     }
     
-    // Test PDF generation
+    // Test PDF generation if available
     if (typeof jsPDF !== 'undefined') {
         try {
             const { jsPDF } = window;
@@ -112,7 +119,7 @@ setTimeout(() => {
             console.log('PDF Test: ❌', e.message);
         }
     }
-}, 1000);
+}, 2000);
 </script>
 </body>
 </html>
