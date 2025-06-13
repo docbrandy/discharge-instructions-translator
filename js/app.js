@@ -20,21 +20,8 @@ class DischargeTranslatorApp {
         this.init();
     }
 
-    /**
-     * Initialize the application
-     */
-    async init() {
-        try {
-            this.setupEventListeners();
-            this.updateLanguageDisplay();
-            this.checkBrowserSupport();
-            
-            console.log('✅ Discharge Translator App initialized successfully');
-        } catch (error) {
-            console.error('❌ Error initializing app:', error);
-            this.showError('Failed to initialize application. Please refresh the page.');
-        }
-    }
+// In the init() method of DischargeTranslatorApp class, add:
+this.translationService.setAzureKey('CUkANjv9pmExMY4H2l4YDal7EBPFIkY59bI5WTLRUqdrpwPZZWBaJQQJ99BFACYeBjFXJ3w3AAAbACOGtOR6', 'eastus');
 
     /**
      * Setup event listeners for UI elements
