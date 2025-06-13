@@ -1,4 +1,4 @@
-/* Production Styles for Discharge Translator */
+/* Enhanced Production Styles for Discharge Translator with QR Code Support */
 
 :root {
     --primary-color: #667eea;
@@ -9,6 +9,7 @@
     --info-color: #17a2b8;
     --light-color: #f8f9fa;
     --dark-color: #343a40;
+    --qr-color: #6f42c1;
     --border-radius: 8px;
     --shadow-light: 0 2px 10px rgba(0,0,0,0.1);
     --shadow-medium: 0 4px 20px rgba(0,0,0,0.15);
@@ -112,7 +113,7 @@ body {
     border-color: var(--primary-color);
 }
 
-/* Button Styles */
+/* Enhanced Button Styles */
 .btn {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     color: white;
@@ -174,6 +175,18 @@ body {
 
 .btn-share {
     background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+}
+
+.btn-download-pdf {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.btn-download-html {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.btn-qr {
+    background: linear-gradient(135deg, var(--qr-color) 0%, #563d7c 100%);
 }
 
 /* Camera and QR Scanner */
@@ -291,6 +304,146 @@ body {
     font-weight: 600;
 }
 
+/* QR Code Display Styles */
+.qr-display {
+    background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+    border: 2px solid var(--qr-color);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.qr-display h3 {
+    color: var(--qr-color);
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.qr-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+.qr-code-display {
+    width: 150px;
+    height: 150px;
+    border: 3px solid #ddd;
+    border-radius: var(--border-radius);
+    background: white;
+    padding: 5px;
+    box-shadow: var(--shadow-light);
+}
+
+.qr-instructions {
+    flex: 1;
+    min-width: 250px;
+    text-align: left;
+}
+
+.qr-instructions p {
+    margin-bottom: 10px;
+    color: #555;
+    line-height: 1.6;
+}
+
+.qr-instructions strong {
+    color: var(--qr-color);
+}
+
+/* QR Modal Styles */
+.qr-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.qr-modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: var(--shadow-heavy);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.qr-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+
+.qr-modal-header h3 {
+    color: var(--qr-color);
+    font-size: 1.4rem;
+    margin: 0;
+}
+
+.qr-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #666;
+    transition: var(--transition);
+    padding: 5px;
+    border-radius: 50%;
+}
+
+.qr-modal-close:hover {
+    background: #f8f9fa;
+    color: var(--danger-color);
+}
+
+.qr-modal-image {
+    width: 250px;
+    height: 250px;
+    border: 3px solid #ddd;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    background: white;
+    padding: 10px;
+    box-shadow: var(--shadow-medium);
+}
+
+.qr-modal-body p {
+    margin-bottom: 10px;
+    color: #555;
+    line-height: 1.6;
+}
+
 /* Section Styles */
 .section {
     margin-bottom: 35px;
@@ -360,6 +513,10 @@ body {
     margin-top: 40px;
     padding-top: 30px;
     border-top: 2px solid #e9ecef;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
 }
 
 /* Status Messages */
@@ -459,10 +616,14 @@ body {
     }
     
     .action-buttons {
-        display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        max-width: 300px;
+        margin: 5px 0;
     }
     
     .section {
@@ -476,6 +637,31 @@ body {
     
     .section-content {
         font-size: 1rem;
+    }
+    
+    .qr-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .qr-code-display {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .qr-instructions {
+        text-align: center;
+        min-width: auto;
+    }
+    
+    .qr-modal-content {
+        padding: 20px;
+        margin: 20px;
+    }
+    
+    .qr-modal-image {
+        width: 200px;
+        height: 200px;
     }
 }
 
@@ -507,6 +693,16 @@ body {
     .manual-input textarea {
         min-height: 120px;
     }
+    
+    .qr-code-display {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .qr-modal-image {
+        width: 150px;
+        height: 150px;
+    }
 }
 
 /* Print Styles */
@@ -518,7 +714,8 @@ body {
     
     .scanner-section,
     .action-buttons,
-    .btn {
+    .btn,
+    .qr-modal {
         display: none !important;
     }
     
@@ -542,6 +739,15 @@ body {
         background: #f0f0f0;
         border: 1px solid #333;
     }
+    
+    .qr-display {
+        border: 2px solid #333;
+        background: #f9f9f9;
+    }
+    
+    .qr-code-display {
+        border: 1px solid #333;
+    }
 }
 
 /* Accessibility Improvements */
@@ -560,6 +766,7 @@ body {
     :root {
         --primary-color: #0066cc;
         --secondary-color: #004499;
+        --qr-color: #4a148c;
         --border-radius: 4px;
     }
     
@@ -570,4 +777,38 @@ body {
     .section {
         border: 2px solid var(--primary-color);
     }
+    
+    .qr-display {
+        border: 3px solid var(--qr-color);
+    }
+}
+
+/* QR Code specific animations */
+.qr-code-display {
+    transition: var(--transition);
+}
+
+.qr-code-display:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-medium);
+}
+
+.qr-display {
+    position: relative;
+    overflow: hidden;
+}
+
+.qr-display::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(111, 66, 193, 0.1), transparent);
+    transition: left 0.6s;
+}
+
+.qr-display:hover::after {
+    left: 100%;
 }
