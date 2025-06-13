@@ -387,6 +387,12 @@ async generateDischargeDocument(format = 'pdf') {
     displayResults(data, translationResults = null) {
         const outputSection = document.getElementById('output');
         const outputContent = document.getElementById('outputContent');
+/**
+     * Display processed results
+     */
+    displayResults(data, translationResults = null) {
+        const outputSection = document.getElementById('output');
+        const outputContent = document.getElementById('outputContent');
         
         if (!outputSection || !outputContent) {
             console.error('Output elements not found');
@@ -448,6 +454,58 @@ async generateDischargeDocument(format = 'pdf') {
         if (!hasContent) {
             const defaultSection = document.createElement('div');
             defaultSection.className = 'section';
+            defaultSection.innerHTML = `
+                <h3>📋 Discharge Information</h3>
+                <div class="section-content">
+                    <p>Your discharge information has been processed and translated.</p>
+                    <p>If specific sections are not shown above, your discharge instructions may be in a format that requires manual review.</p>
+                </div>
+            `;
+            outputContent.appendChild(defaultSection);
+        }
+        
+        // Update action buttons with new download options
+        this.updateActionButtons();
+        
+        // Show the output section
+        outputSection.classList.add('show');
+        
+        // Scroll to results
+        outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /**
+     * Update action buttons with download options
+     */
+    updateActionButtons() {
+        const actionButtons = document.querySelector('.action-buttons');
+        if (!actionButtons) return;
+        
+        // Update the action buttons HTML to include download options
+        actionButtons.innerHTML = `
+            <button id="downloadPdfBtn" class="btn btn-download-pdf">📄 Download PDF</button>
+            <button id="downloadHtmlBtn" class="btn btn-download-html">🌐 Download HTML</button>
+            <button id="printBtn" class="btn btn-print">🖨️ Print Instructions</button>
+            <button id="shareBtn" class="btn btn-share">📤 Share</button>
+        `;
+        
+        // Re-attach event listeners for the new buttons
+        document.getElementById('downloadPdfBtn')?.addEventListener('click', () => {
+            this.generateDischargeDocument('pdf');
+        });
+        
+        document.getElementById('downloadHtmlBtn')?.addEventListener('click', () => {
+            this.generateDischargeDocument('html');
+        });
+        
+        document.getElementById('printBtn')?.addEventListener('click', () => {
+            this.printInstructions();
+        });
+        
+        document.getElementById('shareBtn')?.addEventListener('click', () => {
+            this.shareInstructions();
+        });
+    }
             defaultSection.innerHTML = `
                 <h3>📋 Discharge Information</h3>
                 <div class="section-content">
