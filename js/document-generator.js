@@ -1,738 +1,334 @@
 /**
- * Professional Medical Document Generator
- * Creates hospital-grade discharge summaries in PDF and Word formats
+ * Enhanced Main Application Controller for Discharge Instructions Translator
+ * Now includes QR Code Generation capabilities
  */
 
-class MedicalDocumentGenerator {
+class DischargeTranslatorApp {
     constructor() {
-        this.hospitalConfig = {
-            name: 'Medical Center',
-            logo: null,
-            address: '123 Healthcare Drive, Medical City, ST 12345',
-            phone: '(555) 123-CARE',
-            primaryColor: '#003366',
-            secondaryColor: '#0066CC'
-        };
+        this.translationService = new TranslationService();
+        this.medicalParser = new MedicalDataParser();
+        this.documentGenerator = new MedicalDocumentGenerator();
+        this.qrScanner = null;
+        this.currentLanguage = 'en';
+        this.isScanning = false;
+        this.currentData = null;
+        this.isProcessing = false;
+        this.currentQRCode = null;
         
-        this.documentTemplate = {
-            margins: { top: 50, right: 50, bottom: 50, left: 50 },
-            fontSize: { title: 16, header: 14, body: 11, small: 9 },
-            spacing: { section: 15, paragraph: 8 }
-        };
+        this.init();
     }
 
     /**
-     * Configure hospital branding and information
+     * Initialize the application
      */
-    configureHospital(config) {
-        this.hospitalConfig = {
-            ...this.hospitalConfig,
-            ...config
-        };
-    }
-
-    /**
-     * Generate professional PDF discharge document
-     */
-    async generatePDF(dischargeData, translationData, language = 'en') {
+    async init() {
         try {
-            // Import jsPDF (you'll need to add this library)
-            if (typeof jsPDF === 'undefined') {
-                throw new Error('jsPDF library not loaded. Add: <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>');
+            this.setupEventListeners();
+            this.updateLanguageDisplay();
+            this.checkBrowserSupport();
+            
+            console.log('Discharge Translator App initialized successfully');
+        } catch (error) {
+            console.error('Error initializing app:', error);
+            this.showError('Failed to initialize application. Please refresh the page.');
+        }
+    }
+
+    /**
+     * Setup event listeners for UI elements
+     */
+    setupEventListeners() {
+        // Language selection
+        document.getElementById('languageSelect')?.addEventListener('change', (e) => {
+            this.currentLanguage = e.target.value;
+            this.updateLanguageDisplay();
+            
+            // Re-translate current data if available
+            if (this.currentData) {
+                this.processDischargeData(this.currentData, true);
+            }
+        });
+
+        // QR Scanner controls
+        document.getElementById('startScan')?.addEventListener('click', () => {
+            this.startScanning();
+        });
+
+        document.getElementById('stopScan')?.addEventListener('click', () => {
+            this.stopScanning();
+        });
+
+        // Manual input processing
+        document.getElementById('processManual')?.addEventListener('click', () => {
+            this.processManualInput();
+        });
+
+        // Action buttons (will be dynamically updated with QR code generation)
+        document.getElementById('printBtn')?.addEventListener('click', () => {
+            this.printInstructions();
+        });
+
+        document.getElementById('shareBtn')?.addEventListener('click', () => {
+            this.shareInstructions();
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.stopScanning();
+            } else if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                this.printInstructions();
+            }
+        });
+    }
+
+    /**
+     * Check browser support for required features
+     */
+    checkBrowserSupport() {
+        const features = {
+            camera: navigator.mediaDevices && navigator.mediaDevices.getUserMedia,
+            fetch: !!window.fetch,
+            promises: !!window.Promise,
+            qrcode: typeof QRCode !== 'undefined'
+        };
+
+        const unsupported = Object.entries(features)
+            .filter(([feature, supported]) => !supported)
+            .map(([feature]) => feature);
+
+        if (unsupported.length > 0) {
+            console.warn('Unsupported features:', unsupported);
+            
+            if (!features.camera) {
+                this.showWarning('Camera access not available. You can still use manual input.');
+                document.getElementById('startScan')?.setAttribute('disabled', 'true');
+            }
+            
+            if (!features.qrcode) {
+                this.showWarning('QR Code generation library not loaded. QR codes will not be available.');
+            }
+            
+            if (!features.fetch) {
+                this.showError('This browser is not supported. Please use a modern browser.');
+                return;
+            }
+        }
+    }
+
+    /**
+     * Start QR code scanning
+     */
+    async startScanning() {
+        if (!navigator.mediaDevices?.getUserMedia) {
+            this.showError('QR scanner not available. Please use manual input.');
+            return;
+        }
+
+        if (this.isScanning) {
+            return;
+        }
+
+        try {
+            const video = document.getElementById('qr-video');
+            const startBtn = document.getElementById('startScan');
+            const stopBtn = document.getElementById('stopScan');
+
+            if (!video) {
+                throw new Error('Video element not found');
             }
 
-            const { jsPDF } = window;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            
-            let yPosition = 20;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const margin = 15;
-            const contentWidth = pageWidth - (margin * 2);
+            // Show video and controls
+            video.style.display = 'block';
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
 
-            // Document header
-            yPosition = this.addDocumentHeader(doc, yPosition, pageWidth, margin);
+            // Initialize QR Scanner if available
+            if (typeof QrScanner !== 'undefined') {
+                this.qrScanner = new QrScanner(video, (result) => {
+                    this.handleQRResult(result);
+                });
+
+                await this.qrScanner.start();
+                this.isScanning = true;
+                
+                this.showSuccess('QR scanner started. Position the QR code within the frame.');
+            } else {
+                throw new Error('QR Scanner library not loaded');
+            }
+
+        } catch (error) {
+            console.error('Error starting QR scanner:', error);
+            this.stopScanning();
             
-            // Patient information section (if available)
-            if (dischargeData.patientInfo) {
-                yPosition = this.addPatientInfo(doc, dischargeData.patientInfo, yPosition, margin, contentWidth);
+            if (error.name === 'NotAllowedError') {
+                this.showError('Camera permission denied. Please allow camera access and try again.');
+            } else if (error.name === 'NotFoundError') {
+                this.showError('No camera found. Please use manual input instead.');
+            } else {
+                this.showError('Camera access failed. Please use manual input instead.');
+            }
+        }
+    }
+
+    /**
+     * Stop QR code scanning
+     */
+    stopScanning() {
+        if (this.qrScanner) {
+            this.qrScanner.stop();
+            this.qrScanner.destroy();
+            this.qrScanner = null;
+        }
+
+        const video = document.getElementById('qr-video');
+        const startBtn = document.getElementById('startScan');
+        const stopBtn = document.getElementById('stopScan');
+
+        if (video) video.style.display = 'none';
+        if (startBtn) startBtn.style.display = 'inline-block';
+        if (stopBtn) stopBtn.style.display = 'none';
+
+        this.isScanning = false;
+    }
+
+    /**
+     * Handle QR code scan result
+     */
+    handleQRResult(result) {
+        const data = result.data || result;
+        
+        this.showSuccess('QR code scanned successfully!');
+        this.stopScanning();
+        
+        // Try to parse as medical data QR code first
+        try {
+            const qrData = JSON.parse(data);
+            if (qrData.type === 'medical_discharge' && qrData.data) {
+                // This is a medical QR code generated by our app
+                this.processMedicalQRCode(qrData);
+                return;
+            }
+        } catch (e) {
+            // Not JSON or not our medical QR code, treat as regular text
+        }
+        
+        // Process as regular discharge data
+        this.processDischargeData(data);
+    }
+
+    /**
+     * Process medical QR code data
+     */
+    processMedicalQRCode(qrData) {
+        try {
+            this.showInfo('Processing medical QR code...');
+            
+            // Extract the discharge data
+            const originalData = qrData.data.original;
+            const qrLanguage = qrData.data.language;
+            
+            // Set language if different from current
+            if (qrLanguage !== this.currentLanguage) {
+                document.getElementById('languageSelect').value = qrLanguage;
+                this.currentLanguage = qrLanguage;
+                this.updateLanguageDisplay();
             }
             
-            // Language indicator
-            yPosition = this.addLanguageIndicator(doc, language, yPosition, margin);
+            // Process the data
+            this.processDischargeData(originalData);
             
-            // Main content sections
-            const sections = [
-                { 
-                    key: 'diagnoses', 
-                    title: this.getLocalizedSectionTitle('diagnoses', language),
-                    icon: '🩺',
-                    data: translationData.diagnoses || dischargeData.diagnoses || []
-                },
-                { 
-                    key: 'procedures', 
-                    title: this.getLocalizedSectionTitle('procedures', language),
-                    icon: '⚕️',
-                    data: translationData.procedures || dischargeData.procedures || []
-                },
-                { 
-                    key: 'medications', 
-                    title: this.getLocalizedSectionTitle('medications', language),
-                    icon: '💊',
-                    data: translationData.medications || dischargeData.medications || []
-                },
-                { 
-                    key: 'instructions', 
-                    title: this.getLocalizedSectionTitle('instructions', language),
-                    icon: '📋',
-                    data: translationData.instructions || dischargeData.instructions || []
-                },
-                { 
-                    key: 'returnReasons', 
-                    title: this.getLocalizedSectionTitle('returnReasons', language),
-                    icon: '🚨',
-                    data: translationData.returnReasons || dischargeData.returnReasons || []
-                },
-                { 
-                    key: 'followUp', 
-                    title: this.getLocalizedSectionTitle('followUp', language),
-                    icon: '📅',
-                    data: translationData.followUp || dischargeData.followUp || []
-                }
-            ];
-
-            // Add each section
-            for (const section of sections) {
-                if (section.data && section.data.length > 0) {
-                    // Check if we need a new page
-                    if (yPosition > 250) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    
-                    yPosition = this.addContentSection(doc, section, yPosition, margin, contentWidth);
-                }
-            }
-            
-            // Footer
-            this.addDocumentFooter(doc, language);
-            
-            // Return the PDF as blob for download
-            return {
-                pdf: doc,
-                blob: doc.output('blob'),
-                filename: this.generateFilename('discharge-instructions', language)
-            };
+            this.showSuccess(`Medical QR code processed! Data from ${qrData.hospital?.name || 'Hospital'}`);
             
         } catch (error) {
-            console.error('Error generating PDF:', error);
-            throw new Error(`Failed to generate PDF: ${error.message}`);
+            console.error('Error processing medical QR code:', error);
+            this.showError('Invalid medical QR code format. Processing as text...');
+            this.processDischargeData(qrData.data?.original || '');
         }
     }
 
     /**
-     * Generate professional HTML document (can be converted to Word)
+     * Process manual input
      */
-    generateHTML(dischargeData, translationData, language = 'en') {
-        const languageName = this.getLanguageName(language);
-        const currentDate = new Date().toLocaleDateString();
+    processManualInput() {
+        const input = document.getElementById('manualInput')?.value?.trim();
         
-        const sections = [
-            { 
-                key: 'diagnoses', 
-                title: this.getLocalizedSectionTitle('diagnoses', language),
-                icon: '🩺',
-                data: translationData.diagnoses || dischargeData.diagnoses || [],
-                description: this.getLocalizedSectionDescription('diagnoses', language)
-            },
-            { 
-                key: 'procedures', 
-                title: this.getLocalizedSectionTitle('procedures', language),
-                icon: '⚕️',
-                data: translationData.procedures || dischargeData.procedures || [],
-                description: this.getLocalizedSectionDescription('procedures', language)
-            },
-            { 
-                key: 'medications', 
-                title: this.getLocalizedSectionTitle('medications', language),
-                icon: '💊',
-                data: translationData.medications || dischargeData.medications || [],
-                description: this.getLocalizedSectionDescription('medications', language)
-            },
-            { 
-                key: 'instructions', 
-                title: this.getLocalizedSectionTitle('instructions', language),
-                icon: '📋',
-                data: translationData.instructions || dischargeData.instructions || [],
-                description: this.getLocalizedSectionDescription('instructions', language)
-            },
-            { 
-                key: 'returnReasons', 
-                title: this.getLocalizedSectionTitle('returnReasons', language),
-                icon: '🚨',
-                data: translationData.returnReasons || dischargeData.returnReasons || [],
-                description: this.getLocalizedSectionDescription('returnReasons', language)
-            },
-            { 
-                key: 'followUp', 
-                title: this.getLocalizedSectionTitle('followUp', language),
-                icon: '📅',
-                data: translationData.followUp || dischargeData.followUp || [],
-                description: this.getLocalizedSectionDescription('followUp', language)
+        if (!input) {
+            this.showError('Please enter some discharge information.');
+            return;
+        }
+
+        this.processDischargeData(input);
+    }
+
+    /**
+     * Main data processing method with QR code generation
+     */
+    async processDischargeData(rawData, isRetranslation = false) {
+        if (this.isProcessing && !isRetranslation) {
+            return;
+        }
+
+        this.isProcessing = true;
+
+        try {
+            this.showStatus('Processing discharge information...', 'info');
+
+            // Store raw data for potential re-translation
+            if (!isRetranslation) {
+                this.currentData = rawData;
             }
+
+            // Parse the medical data
+            const parsedData = this.medicalParser.parseDischargeData(rawData);
+
+            // Translate if needed
+            let translatedData = parsedData;
+            let translationResults = null;
+
+            if (this.currentLanguage !== 'en') {
+                this.showStatus('Translating to your selected language...', 'info');
+
+                translationResults = await this.translateMedicalData(parsedData);
+                translatedData = translationResults.data;
+            }
+
+            // Generate QR code for the processed data
+            if (typeof QRCode !== 'undefined') {
+                this.showStatus('Generating QR code for mobile access...', 'info');
+                try {
+                    this.currentQRCode = await this.documentGenerator.generateQRCode(
+                        parsedData, 
+                        translatedData, 
+                        this.currentLanguage
+                    );
+                } catch (qrError) {
+                    console.warn('QR code generation failed:', qrError);
+                    this.currentQRCode = null;
+                }
+            }
+
+            // Display results
+            this.displayResults(translatedData, translationResults);
+            
+            this.hideStatus();
+
+        } catch (error) {
+            console.error('Error processing discharge data:', error);
+            this.showError(`Error processing data: ${error.message}`);
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+
+    /**
+     * Translate medical data to target language
+     */
+    async translateMedicalData(parsedData) {
+        const sectionsToTranslate = [
+            'diagnoses', 'medications', 'instructions', 
+            'returnReasons', 'followUp', 'procedures'
         ];
 
-        const sectionsHTML = sections
-            .filter(section => section.data && section.data.length > 0)
-            .map(section => this.generateSectionHTML(section))
-            .join('');
-
-        const htmlDocument = `
-<!DOCTYPE html>
-<html lang="${language}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discharge Instructions - ${languageName}</title>
-    <style>
-        ${this.getDocumentCSS()}
-    </style>
-</head>
-<body>
-    <div class="document-container">
-        <!-- Hospital Header -->
-        <header class="hospital-header">
-            <div class="hospital-info">
-                <h1 class="hospital-name">${this.hospitalConfig.name}</h1>
-                <div class="hospital-contact">
-                    <div>${this.hospitalConfig.address}</div>
-                    <div>Tel: ${this.hospitalConfig.phone}</div>
-                </div>
-            </div>
-            ${this.hospitalConfig.logo ? `<img src="${this.hospitalConfig.logo}" alt="Hospital Logo" class="hospital-logo">` : ''}
-        </header>
-
-        <!-- Document Title -->
-        <div class="document-title">
-            <h1>${this.getLocalizedText('document_title', language)}</h1>
-            <div class="document-info">
-                <div><strong>${this.getLocalizedText('language', language)}:</strong> ${languageName}</div>
-                <div><strong>${this.getLocalizedText('date', language)}:</strong> ${currentDate}</div>
-            </div>
-        </div>
-
-        <!-- Patient Information -->
-        ${dischargeData.patientInfo ? this.generatePatientInfoHTML(dischargeData.patientInfo, language) : ''}
-
-        <!-- Main Content -->
-        <main class="document-content">
-            ${sectionsHTML}
-        </main>
-
-        <!-- Footer -->
-        <footer class="document-footer">
-            <div class="disclaimer">
-                <p><strong>${this.getLocalizedText('disclaimer_title', language)}:</strong> ${this.getLocalizedText('disclaimer_text', language)}</p>
-            </div>
-            <div class="generation-info">
-                <p>${this.getLocalizedText('generated_on', language)}: ${currentDate}</p>
-                <p>${this.getLocalizedText('generated_by', language)}: ${this.hospitalConfig.name}</p>
-            </div>
-        </footer>
-    </div>
-</body>
-</html>`;
-
-        return {
-            html: htmlDocument,
-            filename: this.generateFilename('discharge-instructions', language, 'html')
-        };
-    }
-
-    /**
-     * Add document header to PDF
-     */
-    addDocumentHeader(doc, yPosition, pageWidth, margin) {
-        // Hospital name
-        doc.setFontSize(18);
-        doc.setTextColor(this.hexToRgb(this.hospitalConfig.primaryColor));
-        doc.text(this.hospitalConfig.name, margin, yPosition);
-        yPosition += 10;
-
-        // Hospital contact info
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(this.hospitalConfig.address, margin, yPosition);
-        yPosition += 5;
-        doc.text(`Tel: ${this.hospitalConfig.phone}`, margin, yPosition);
-        yPosition += 10;
-
-        // Title line
-        doc.setLineWidth(1);
-        doc.setDrawColor(this.hexToRgb(this.hospitalConfig.primaryColor));
-        doc.line(margin, yPosition, pageWidth - margin, yPosition);
-        yPosition += 15;
-
-        // Document title
-        doc.setFontSize(16);
-        doc.setTextColor(0, 0, 0);
-        doc.text('DISCHARGE INSTRUCTIONS', margin, yPosition);
-        yPosition += 15;
-
-        return yPosition;
-    }
-
-    /**
-     * Add patient information section to PDF
-     */
-    addPatientInfo(doc, patientInfo, yPosition, margin, contentWidth) {
-        doc.setFontSize(12);
-        doc.setTextColor(this.hexToRgb(this.hospitalConfig.primaryColor));
-        doc.text('Patient Information', margin, yPosition);
-        yPosition += 8;
-
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        
-        if (patientInfo.name) {
-            doc.text(`Name: ${patientInfo.name}`, margin, yPosition);
-            yPosition += 5;
-        }
-        if (patientInfo.dob) {
-            doc.text(`Date of Birth: ${patientInfo.dob}`, margin, yPosition);
-            yPosition += 5;
-        }
-        if (patientInfo.mrn) {
-            doc.text(`MRN: ${patientInfo.mrn}`, margin, yPosition);
-            yPosition += 5;
-        }
-        
-        yPosition += 5;
-        return yPosition;
-    }
-
-    /**
-     * Add language indicator to PDF
-     */
-    addLanguageIndicator(doc, language, yPosition, margin) {
-        const languageName = this.getLanguageName(language);
-        doc.setFontSize(11);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Language: ${languageName}`, margin, yPosition);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 80, yPosition);
-        return yPosition + 15;
-    }
-
-    /**
-     * Add content section to PDF
-     */
-    addContentSection(doc, section, yPosition, margin, contentWidth) {
-        // Section title
-        doc.setFontSize(12);
-        doc.setTextColor(this.hexToRgb(this.hospitalConfig.primaryColor));
-        doc.text(`${section.icon} ${section.title}`, margin, yPosition);
-        yPosition += 8;
-
-        // Section content
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        
-        section.data.forEach(item => {
-            const lines = doc.splitTextToSize(`• ${item}`, contentWidth);
-            lines.forEach(line => {
-                if (yPosition > 270) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                doc.text(line, margin + 5, yPosition);
-                yPosition += 5;
-            });
-            yPosition += 2;
-        });
-        
-        return yPosition + 8;
-    }
-
-    /**
-     * Add footer to PDF
-     */
-    addDocumentFooter(doc, language) {
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 15;
-        
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        
-        const disclaimerText = this.getLocalizedText('disclaimer_text', language);
-        const footerY = pageHeight - 20;
-        
-        doc.text(disclaimerText, margin, footerY, { maxWidth: 180 });
-    }
-
-    /**
-     * Generate section HTML
-     */
-    generateSectionHTML(section) {
-        const itemsHTML = section.data.map(item => `<li>${this.escapeHtml(item)}</li>`).join('');
-        
-        return `
-        <section class="content-section">
-            <h2 class="section-title">
-                <span class="section-icon">${section.icon}</span>
-                ${section.title}
-            </h2>
-            <p class="section-description">${section.description}</p>
-            <ul class="section-content">
-                ${itemsHTML}
-            </ul>
-        </section>`;
-    }
-
-    /**
-     * Generate patient info HTML
-     */
-    generatePatientInfoHTML(patientInfo, language) {
-        return `
-        <section class="patient-info">
-            <h2>${this.getLocalizedText('patient_information', language)}</h2>
-            <div class="patient-details">
-                ${patientInfo.name ? `<div><strong>${this.getLocalizedText('name', language)}:</strong> ${patientInfo.name}</div>` : ''}
-                ${patientInfo.dob ? `<div><strong>${this.getLocalizedText('date_of_birth', language)}:</strong> ${patientInfo.dob}</div>` : ''}
-                ${patientInfo.mrn ? `<div><strong>${this.getLocalizedText('medical_record', language)}:</strong> ${patientInfo.mrn}</div>` : ''}
-            </div>
-        </section>`;
-    }
-
-    /**
-     * Get document CSS styles
-     */
-    getDocumentCSS() {
-        return `
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Times New Roman', serif;
-            line-height: 1.6;
-            color: #333;
-            background: white;
-        }
-        
-        .document-container {
-            max-width: 8.5in;
-            margin: 0 auto;
-            padding: 1in;
-            background: white;
-            min-height: 11in;
-        }
-        
-        .hospital-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 3px solid ${this.hospitalConfig.primaryColor};
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .hospital-name {
-            font-size: 24px;
-            color: ${this.hospitalConfig.primaryColor};
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .hospital-contact {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .hospital-logo {
-            max-height: 60px;
-            max-width: 150px;
-        }
-        
-        .document-title {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .document-title h1 {
-            font-size: 22px;
-            color: ${this.hospitalConfig.primaryColor};
-            margin-bottom: 10px;
-        }
-        
-        .document-info {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .patient-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 30px;
-            border-left: 4px solid ${this.hospitalConfig.primaryColor};
-        }
-        
-        .patient-info h2 {
-            color: ${this.hospitalConfig.primaryColor};
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-        
-        .patient-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            font-size: 14px;
-        }
-        
-        .content-section {
-            margin-bottom: 30px;
-            page-break-inside: avoid;
-        }
-        
-        .section-title {
-            color: ${this.hospitalConfig.primaryColor};
-            font-size: 18px;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .section-icon {
-            font-size: 20px;
-        }
-        
-        .section-description {
-            font-style: italic;
-            color: #666;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-        
-        .section-content {
-            list-style: none;
-            padding-left: 0;
-        }
-        
-        .section-content li {
-            padding: 8px 0;
-            padding-left: 20px;
-            position: relative;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .section-content li:before {
-            content: "•";
-            color: ${this.hospitalConfig.primaryColor};
-            font-weight: bold;
-            position: absolute;
-            left: 0;
-        }
-        
-        .document-footer {
-            margin-top: 50px;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .disclaimer {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .generation-info {
-            text-align: center;
-            font-size: 11px;
-        }
-        
-        @media print {
-            .document-container {
-                max-width: none;
-                margin: 0;
-                padding: 0.5in;
-            }
-            
-            .content-section {
-                page-break-inside: avoid;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .document-container {
-                padding: 20px;
-            }
-            
-            .hospital-header {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .document-info {
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            .patient-details {
-                grid-template-columns: 1fr;
-            }
-        }`;
-    }
-
-    /**
-     * Utility functions
-     */
-    getLanguageName(code) {
-        const languages = {
-            'en': 'English',
-            'es': 'Español (Spanish)',
-            'fr': 'Français (French)',
-            'de': 'Deutsch (German)',
-            'it': 'Italiano (Italian)',
-            'pt': 'Português (Portuguese)',
-            'zh': '中文 (Chinese)',
-            'ja': '日本語 (Japanese)',
-            'ko': '한국어 (Korean)',
-            'ar': 'العربية (Arabic)',
-            'hi': 'हिन्दी (Hindi)'
-        };
-        return languages[code] || 'Unknown Language';
-    }
-
-    getLocalizedSectionTitle(section, language) {
-        const titles = {
-            'en': {
-                'diagnoses': 'Diagnoses & Conditions',
-                'procedures': 'Procedures & Treatments', 
-                'medications': 'Medications',
-                'instructions': 'Care Instructions',
-                'returnReasons': 'When to Seek Emergency Care',
-                'followUp': 'Follow-up Care'
-            },
-            'es': {
-                'diagnoses': 'Diagnósticos y Condiciones',
-                'procedures': 'Procedimientos y Tratamientos',
-                'medications': 'Medicamentos', 
-                'instructions': 'Instrucciones de Cuidado',
-                'returnReasons': 'Cuándo Buscar Atención de Emergencia',
-                'followUp': 'Atención de Seguimiento'
-            }
-        };
-        return titles[language]?.[section] || titles['en'][section] || section;
-    }
-
-    getLocalizedSectionDescription(section, language) {
-        const descriptions = {
-            'en': {
-                'diagnoses': 'Medical conditions identified during your visit',
-                'procedures': 'Medical procedures performed during your stay',
-                'medications': 'Prescribed medications and instructions',
-                'instructions': 'Important care instructions for your recovery',
-                'returnReasons': 'Warning signs that require immediate medical attention',
-                'followUp': 'Scheduled appointments and ongoing care requirements'
-            },
-            'es': {
-                'diagnoses': 'Condiciones médicas identificadas durante su visita',
-                'procedures': 'Procedimientos médicos realizados durante su estadía',
-                'medications': 'Medicamentos recetados e instrucciones',
-                'instructions': 'Instrucciones importantes de cuidado para su recuperación',
-                'returnReasons': 'Señales de advertencia que requieren atención médica inmediata',
-                'followUp': 'Citas programadas y requisitos de atención continua'
-            }
-        };
-        return descriptions[language]?.[section] || descriptions['en'][section] || '';
-    }
-
-    getLocalizedText(key, language) {
-        const texts = {
-            'en': {
-                'document_title': 'DISCHARGE INSTRUCTIONS',
-                'language': 'Language',
-                'date': 'Date',
-                'patient_information': 'Patient Information',
-                'name': 'Name',
-                'date_of_birth': 'Date of Birth',
-                'medical_record': 'Medical Record Number',
-                'disclaimer_title': 'Important Notice',
-                'disclaimer_text': 'This translation is for informational purposes only. Always consult your healthcare provider for medical advice. If you have questions about these instructions, contact your doctor or pharmacist.',
-                'generated_on': 'Generated on',
-                'generated_by': 'Generated by'
-            },
-            'es': {
-                'document_title': 'INSTRUCCIONES DE ALTA',
-                'language': 'Idioma',
-                'date': 'Fecha',
-                'patient_information': 'Información del Paciente',
-                'name': 'Nombre',
-                'date_of_birth': 'Fecha de Nacimiento',
-                'medical_record': 'Número de Expediente Médico',
-                'disclaimer_title': 'Aviso Importante',
-                'disclaimer_text': 'Esta traducción es solo para fines informativos. Siempre consulte a su proveedor de atención médica para obtener consejos médicos. Si tiene preguntas sobre estas instrucciones, comuníquese con su médico o farmacéutico.',
-                'generated_on': 'Generado el',
-                'generated_by': 'Generado por'
-            }
-        };
-        return texts[language]?.[key] || texts['en'][key] || key;
-    }
-
-    generateFilename(prefix, language, extension = 'pdf') {
-        const timestamp = new Date().toISOString().slice(0, 10);
-        const langCode = language.toUpperCase();
-        return `${prefix}-${langCode}-${timestamp}.${extension}`;
-    }
-
-    hexToRgb(hex) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? [
-            parseInt(result[1], 16),
-            parseInt(result[2], 16), 
-            parseInt(result[3], 16)
-        ] : [0, 0, 0];
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    /**
-     * Download generated document
-     */
-    downloadDocument(documentData, type = 'pdf') {
-        const link = document.createElement('a');
-        
-        if (type === 'pdf') {
-            link.href = URL.createObjectURL(documentData.blob);
-            link.download = documentData.filename;
-        } else if (type === 'html') {
-            const blob = new Blob([documentData.html], { type: 'text/html' });
-            link.href = URL.createObjectURL(blob);
-            link.download = documentData.filename;
-        }
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-    }
-}
-
-// Export for use in main app
-window.MedicalDocumentGenerator = MedicalDocumentGenerator;
+        const translationResults = {
